@@ -13,3 +13,5 @@ coverage.xml
 /.idea/inspectionProfiles/profiles_settings.xml
 /.idea/python-project-50.iml
 /.idea/vcs.xml
+/.idea
+/.idea/inspectionProfiles
