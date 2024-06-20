@@ -10,3 +10,6 @@ start:
 
 build:
 	./build.sh
+
+test-start:
+	poetry run flask --app page_analyzer.app --debug run --port 7000
