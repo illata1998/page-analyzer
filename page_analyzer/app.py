@@ -22,17 +22,27 @@ def index():
 
 @app.post('/')
 def index_post():
-    url = request.args.get('url', '', type=str)
-    created_at = datetime.now()
+    url = request.form.get('url', '', type=str)
+    created_at = datetime.now().date()
     if validators.url(url) and len(url) <= 255:
         flash('Страница успешно добавлена', 'success')
-        cursor.execute(f"INSERT INTO urls (name, created_at) VALUES ({url}, {created_at})")
-        return redirect(url_for('urls_get'), code=302)
+        cursor.execute(f"INSERT INTO urls (name, created_at) VALUES ('{url}', '{created_at}');")
+        cursor.execute(f"SELECT id FROM urls WHERE name = '{url}';")
+        id = cursor.fetchone()[0]
+        return redirect(url_for('url_get', id=id), code=302)
     flash('Некорекктный URL', 'danger')
     messages = get_flashed_messages(with_categories=True)
     return render_template('index.html', messages=messages, url=url)
 
 
-@app.route('/urls')
-def urls_get():
-    pass
+@app.route('/urls/<id>')
+def url_get(id):
+    messages = get_flashed_messages(with_categories=True)
+    cursor.execute(f"SELECT * FROM urls WHERE id = {id}")
+    row = cursor.fetchone()
+    url = {
+        'id': row[0],
+        'name': row[1],
+        'created_at': row[2]
+    }
+    return render_template('show.html', messages=messages, url=url)
