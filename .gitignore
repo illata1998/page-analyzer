@@ -16,4 +16,3 @@ coverage.xml
 /.idea
 /.idea/inspectionProfiles
 /.env
-/database.sql
