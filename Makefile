@@ -13,3 +13,6 @@ build:
 
 test-start:
 	poetry run flask --app page_analyzer.app --debug run --port 7000
+
+make lint:
+	poetry run flake8
