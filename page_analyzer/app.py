@@ -26,19 +26,19 @@ def index_post():
     created_at = datetime.now().date()
     if validators.url(url) and len(url) <= 255:
         flash('Страница успешно добавлена', 'success')
-        cursor.execute(f"INSERT INTO urls (name, created_at) VALUES ('{url}', '{created_at}');")
-        cursor.execute(f"SELECT id FROM urls WHERE name = '{url}';")
-        id = cursor.fetchone()[0]
-        return redirect(url_for('url_get', id=id), code=302)
+        cursor.execute(f"INSERT INTO public.urls (name, created_at) VALUES ('{url}', '{created_at}');")
+        cursor.execute(f"SELECT id FROM public.urls WHERE urls.name = '{url}';")
+        url_id = cursor.fetchone()[0]
+        return redirect(url_for('url_get', url_id=url_id), code=302)
     flash('Некорекктный URL', 'danger')
     messages = get_flashed_messages(with_categories=True)
-    return render_template('index.html', messages=messages, url=url)
+    return render_template('index.html', messages=messages, url=url), 422
 
 
-@app.route('/urls/<id>')
-def url_get(id):
+@app.route('/urls/<url_id>')
+def url_get(url_id):
     messages = get_flashed_messages(with_categories=True)
-    cursor.execute(f"SELECT * FROM urls WHERE id = {id}")
+    cursor.execute(f"SELECT * FROM urls WHERE id = {url_id}")
     row = cursor.fetchone()
     url = {
         'id': row[0],
