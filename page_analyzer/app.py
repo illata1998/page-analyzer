@@ -48,7 +48,7 @@ def add_url():
     conn = connect_to_db()
     cursor = conn.cursor()
     cursor.execute(
-        """
+        f"""
         SELECT *
         FROM urls
         WHERE urls.name = '{url}';
@@ -65,7 +65,7 @@ def add_url():
         )
         conn.commit()
         cursor.execute(
-            """
+            f"""
             SELECT id
             FROM urls
             WHERE urls.name = '{url}';
@@ -123,7 +123,7 @@ def show_url(url_id):
     cursor = conn.cursor()
     messages = get_flashed_messages(with_categories=True)
     cursor.execute(
-        """
+        f"""
         SELECT *
         FROM urls
         WHERE urls.id = {url_id};
@@ -131,18 +131,19 @@ def show_url(url_id):
     )
     record = cursor.fetchone()
     if not record:
-        return 404
+        return render_template('404.html'), 404
     url = {
         'id': record[0],
         'name': record[1],
     }
     cursor.execute(
-        """
+        f"""
         SELECT
             url_checks.id,
             url_checks.created_at
         FROM url_checks
-        WHERE url_checks.url_id = {url_id};
+        WHERE url_checks.url_id = {url_id}
+        ORDER BY url_checks.id DESC;
         """
     )
     records = cursor.fetchall()
@@ -170,7 +171,7 @@ def check_url(url_id):
     conn = connect_to_db()
     cursor = conn.cursor()
     cursor.execute(
-        """
+        f"""
         SELECT *
         FROM urls
         WHERE urls.id = {url_id};
@@ -178,7 +179,7 @@ def check_url(url_id):
     )
     record = cursor.fetchone()
     if not record:
-        return 404
+        return render_template('404.html'), 404
     cursor.execute(
         f"""
         INSERT INTO url_checks (url_id, created_at) VALUES
