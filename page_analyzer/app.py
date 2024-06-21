@@ -86,7 +86,7 @@ def show_url(url_id):
     conn = connect_to_db()
     cursor = conn.cursor()
     messages = get_flashed_messages(with_categories=True)
-    cursor.execute(f"SELECT * FROM urls WHERE id = {url_id};")
+    cursor.execute(f"SELECT * FROM public.urls WHERE urls.id = {url_id};")
     record = cursor.fetchone()
     url = {
         'id': record[0],
