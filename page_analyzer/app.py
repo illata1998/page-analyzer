@@ -135,6 +135,7 @@ def show_url(url_id):
     url = {
         'id': record[0],
         'name': record[1],
+        'created_at': record[2]
     }
     cursor.execute(
         f"""
