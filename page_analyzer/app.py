@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import psycopg2
 import validators
 from datetime import datetime
+from urllib.parse import urlparse
 
 load_dotenv()
 
@@ -13,8 +14,16 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
 
 
-def connect():
+def connect_to_db():
     return psycopg2.connect(DATABASE_URL)
+
+
+def normalize_url(url):
+    parsed_url = urlparse(url)
+    scheme = parsed_url.scheme
+    hostname = parsed_url.hostname
+    print(hostname)
+    return scheme + '://' + hostname
 
 
 @app.get('/')
@@ -34,7 +43,8 @@ def add_url():
             messages=messages,
             url=url
         ), 422
-    conn = connect()
+    url = normalize_url(url)
+    conn = connect_to_db()
     cursor = conn.cursor()
     cursor.execute(f"SELECT * FROM public.urls WHERE urls.name = '{url}';")
     record = cursor.fetchone()
@@ -53,7 +63,7 @@ def add_url():
 
 @app.get('/urls')
 def show_all_urls():
-    conn = connect()
+    conn = connect_to_db()
     cursor = conn.cursor()
     cursor.execute(f"SELECT * FROM public.urls ORDER BY urls.id DESC;")
     records = cursor.fetchall()
@@ -73,7 +83,7 @@ def show_all_urls():
 
 @app.route('/urls/<url_id>')
 def show_url(url_id):
-    conn = connect()
+    conn = connect_to_db()
     cursor = conn.cursor()
     messages = get_flashed_messages(with_categories=True)
     cursor.execute(f"SELECT * FROM urls WHERE id = {url_id};")
