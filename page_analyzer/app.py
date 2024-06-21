@@ -38,7 +38,7 @@ def index_post():
 @app.route('/urls/<url_id>')
 def url_get(url_id):
     messages = get_flashed_messages(with_categories=True)
-    cursor.execute(f"SELECT * FROM urls WHERE id = {url_id}")
+    cursor.execute(f"SELECT * FROM urls WHERE id = {url_id};")
     row = cursor.fetchone()
     url = {
         'id': row[0],
