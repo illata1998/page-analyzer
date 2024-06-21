@@ -21,8 +21,12 @@
                             <td>
                                 <a href="{{ url_for('show_url', url_id=url['id']) }}">{{ url['name'] }}</a>
                             </td>
-                            <td></td>
-                            <td></td>
+                            <td>
+                                {% if url['latest_check_at'] %}
+                                    {{ url['latest_check_at'] }}
+                                {% endif %}
+                            </td>
+                            <td>url['status_code']</td>
                         </tr>
                     {% endfor %}
                 {% endif %}
