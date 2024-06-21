@@ -22,7 +22,7 @@ def index():
     return render_template('index.html')
 
 
-@app.post('/')
+@app.post('/urls')
 def add_url():
     url = request.form.get('url', '', type=str)
     created_at = datetime.now().date()
@@ -63,7 +63,6 @@ def show_all_urls():
             {
                 'id': record[0],
                 'name': record[1],
-                'created_at': record[2]
             }
         )
     return render_template(
