@@ -44,7 +44,7 @@ def add_url():
             messages=messages,
             url=url
         ), 422
-    url = normalize_url(url)
+    #url = normalize_url(url)
     conn = connect_to_db()
     cursor = conn.cursor()
     cursor.execute(
@@ -147,7 +147,7 @@ def show_url(url_id):
     )
     records = cursor.fetchall()
     url_checks = []
-    if record is not None:
+    if records is not None:
         for record in records:
             url_checks.append(
                 {
@@ -177,16 +177,21 @@ def check_url(url_id):
         """
     )
     record = cursor.fetchone()
-    req = requests.get(record[0])
     if not record:
         return render_template('404.html'), 404
-    cursor.execute(
-        f"""
-        INSERT INTO url_checks (url_id, status_code) VALUES
-        ('{url_id}', {req.status_code});
-        """
-    )
-    conn.commit()
-    conn.close()
-    flash('Страница успешно проверена', 'success')
-    return redirect(url_for('show_url', url_id=url_id), code=302)
+    try:
+        resp = requests.get(record[0])
+        resp.raise_for_status()
+        cursor.execute(
+            f"""
+                INSERT INTO url_checks (url_id, status_code) VALUES
+                ('{url_id}', {resp.status_code});
+                """
+        )
+        conn.commit()
+        conn.close()
+        flash('Страница успешно проверена', 'success')
+        return redirect(url_for('show_url', url_id=url_id), code=302)
+    except requests.exceptions.HTTPError:
+        flash('Произошла ошибка при проверке', 'danger')
+        return redirect(url_for('show_url', url_id=url_id), code=422)
