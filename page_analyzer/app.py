@@ -44,7 +44,7 @@ def add_url():
             messages=messages,
             url=url
         ), 422
-    #url = normalize_url(url)
+    url = normalize_url(url)
     conn = connect_to_db()
     cursor = conn.cursor()
     cursor.execute(
