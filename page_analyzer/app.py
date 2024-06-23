@@ -6,6 +6,7 @@ import psycopg2
 import validators
 from datetime import datetime
 from urllib.parse import urlparse
+import requests
 
 load_dotenv()
 
@@ -35,7 +36,6 @@ def index():
 @app.post('/urls')
 def add_url():
     url = request.form.get('url', '', type=str)
-    created_at = datetime.now().date()
     if not (validators.url(url) and len(url) <= 255):
         flash('Некорекктный URL', 'danger')
         messages = get_flashed_messages(with_categories=True)
@@ -59,8 +59,8 @@ def add_url():
         flash('Страница успешно добавлена', 'success')
         cursor.execute(
             f"""
-            INSERT INTO urls (name, created_at) VALUES
-            ('{url}', '{created_at}');
+            INSERT INTO urls (name) VALUES
+            ('{url}');
             """
         )
         conn.commit()
@@ -84,33 +84,30 @@ def show_all_urls():
     conn = connect_to_db()
     cursor = conn.cursor()
     cursor.execute(
-        """
-        SELECT
-            urls.id,
-            urls.name,
-            latest_url_checks.latest_check_at
-        FROM urls
-        LEFT JOIN (
+        f"""
             SELECT
-                url_checks.url_id AS url_id,
-                MAX(url_checks.created_at) as latest_check_at
-            FROM url_checks
-            GROUP BY url_checks.url_id
-        ) AS latest_url_checks
-            ON latest_url_checks.url_id = urls.id
-        ORDER BY urls.id DESC;
-        """
+	            urls.id,
+	            urls.name,
+	            latest_url_checks.status_code,
+	            latest_url_checks.created_at
+            FROM urls
+            LEFT JOIN latest_url_checks
+	            ON urls.id = latest_url_checks.url_id
+            ORDER BY urls.id DESC;
+            """
     )
     records = cursor.fetchall()
     urls = []
-    for record in records:
-        urls.append(
-            {
-                'id': record[0],
-                'name': record[1],
-                'latest_check_at': record[2]
-            }
-        )
+    if records is not None:
+        for record in records:
+            urls.append(
+                {
+                    'id': record[0],
+                    'name': record[1],
+                    'status_code': record[2],
+                    'latest_checked_at': record[3].date() if record[3] is not None else record[3]
+                }
+            )
     return render_template(
         'show_all_urls.html',
         urls=urls
@@ -135,12 +132,13 @@ def show_url(url_id):
     url = {
         'id': record[0],
         'name': record[1],
-        'created_at': record[2]
+        'created_at': record[2].date() if record[2] is not None else record[2]
     }
     cursor.execute(
         f"""
         SELECT
             url_checks.id,
+            url_checks.status_code,
             url_checks.created_at
         FROM url_checks
         WHERE url_checks.url_id = {url_id}
@@ -154,7 +152,8 @@ def show_url(url_id):
             url_checks.append(
                 {
                     'id': record[0],
-                    'created_at': record[1]
+                    'status_code': record[1],
+                    'created_at': record[2].date() if record[2] is not None else record[2]
                 }
             )
     conn.close()
@@ -168,23 +167,23 @@ def show_url(url_id):
 
 @app.post('/urls/<url_id>/checks')
 def check_url(url_id):
-    created_at = datetime.now().date()
     conn = connect_to_db()
     cursor = conn.cursor()
     cursor.execute(
         f"""
-        SELECT *
+        SELECT name
         FROM urls
         WHERE urls.id = {url_id};
         """
     )
     record = cursor.fetchone()
+    req = requests.get(record[0])
     if not record:
         return render_template('404.html'), 404
     cursor.execute(
         f"""
-        INSERT INTO url_checks (url_id, created_at) VALUES
-        ('{url_id}', '{created_at}');
+        INSERT INTO url_checks (url_id, status_code) VALUES
+        ('{url_id}', {req.status_code});
         """
     )
     conn.commit()
