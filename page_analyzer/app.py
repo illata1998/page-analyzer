@@ -1,12 +1,21 @@
 import os
-from flask import (Flask, render_template, request, flash,
-                   get_flashed_messages, url_for, redirect)
-from dotenv import load_dotenv
 import psycopg2
-import validators
-from datetime import datetime
-from urllib.parse import urlparse
 import requests
+
+from flask import (
+    Flask,
+    render_template,
+    request,
+    flash,
+    get_flashed_messages,
+    url_for,
+    redirect
+)
+
+from dotenv import load_dotenv
+
+from page_analyzer.utils import validate_url, normalize_url, format_timestamp
+from page_analyzer.html_parser import parse_html
 
 load_dotenv()
 
@@ -20,14 +29,6 @@ def connect_to_db():
     return psycopg2.connect(DATABASE_URL)
 
 
-def normalize_url(url):
-    parsed_url = urlparse(url)
-    scheme = parsed_url.scheme
-    hostname = parsed_url.hostname
-    print(hostname)
-    return scheme + '://' + hostname
-
-
 @app.get('/')
 def index():
     return render_template('index.html')
@@ -36,7 +37,7 @@ def index():
 @app.post('/urls')
 def add_url():
     url = request.form.get('url', '', type=str)
-    if not (validators.url(url) and len(url) <= 255):
+    if not validate_url(url):
         flash('Некорекктный URL', 'danger')
         messages = get_flashed_messages(with_categories=True)
         return render_template(
@@ -76,7 +77,7 @@ def add_url():
     else:
         flash('Страница уже существует', 'info')
         url_id = record[0]
-    return redirect(url_for('show_url', url_id=url_id), code=302)
+    return redirect(url_for('show_url', url_id=url_id), 302)
 
 
 @app.get('/urls')
@@ -84,17 +85,17 @@ def show_all_urls():
     conn = connect_to_db()
     cursor = conn.cursor()
     cursor.execute(
-        f"""
-            SELECT
-	            urls.id,
-	            urls.name,
-	            latest_url_checks.status_code,
-	            latest_url_checks.created_at
-            FROM urls
-            LEFT JOIN latest_url_checks
-	            ON urls.id = latest_url_checks.url_id
-            ORDER BY urls.id DESC;
-            """
+        """
+        SELECT
+            urls.id,
+            urls.name,
+            latest_url_checks.status_code,
+            latest_url_checks.created_at
+        FROM urls
+        LEFT JOIN latest_url_checks
+            ON urls.id = latest_url_checks.url_id
+        ORDER BY urls.id DESC;
+        """
     )
     records = cursor.fetchall()
     urls = []
@@ -105,7 +106,7 @@ def show_all_urls():
                     'id': record[0],
                     'name': record[1],
                     'status_code': record[2],
-                    'latest_checked_at': record[3].date() if record[3] is not None else record[3]
+                    'latest_checked_at': format_timestamp(record[3])
                 }
             )
     return render_template(
@@ -114,11 +115,10 @@ def show_all_urls():
     )
 
 
-@app.route('/urls/<url_id>')
+@app.route('/urls/<int:url_id>')
 def show_url(url_id):
     conn = connect_to_db()
     cursor = conn.cursor()
-    messages = get_flashed_messages(with_categories=True)
     cursor.execute(
         f"""
         SELECT *
@@ -132,13 +132,16 @@ def show_url(url_id):
     url = {
         'id': record[0],
         'name': record[1],
-        'created_at': record[2].date() if record[2] is not None else record[2]
+        'created_at': format_timestamp(record[2])
     }
     cursor.execute(
         f"""
         SELECT
             url_checks.id,
             url_checks.status_code,
+            url_checks.h1,
+            url_checks.title,
+            url_checks.description,
             url_checks.created_at
         FROM url_checks
         WHERE url_checks.url_id = {url_id}
@@ -153,10 +156,14 @@ def show_url(url_id):
                 {
                     'id': record[0],
                     'status_code': record[1],
-                    'created_at': record[2].date() if record[2] is not None else record[2]
+                    'h1': record[2],
+                    'title': record[3],
+                    'description': record[4],
+                    'created_at': format_timestamp(record[5])
                 }
             )
     conn.close()
+    messages = get_flashed_messages(with_categories=True)
     return render_template(
         'show_url.html',
         messages=messages,
@@ -165,7 +172,7 @@ def show_url(url_id):
     )
 
 
-@app.post('/urls/<url_id>/checks')
+@app.post('/urls/<int:url_id>/checks')
 def check_url(url_id):
     conn = connect_to_db()
     cursor = conn.cursor()
@@ -182,16 +189,28 @@ def check_url(url_id):
     try:
         resp = requests.get(record[0])
         resp.raise_for_status()
+        h1, title, description = parse_html(resp)
         cursor.execute(
             f"""
-                INSERT INTO url_checks (url_id, status_code) VALUES
-                ('{url_id}', {resp.status_code});
-                """
+            INSERT INTO url_checks (
+                url_id,
+                status_code,
+                h1,
+                title,
+                description
+            ) VALUES (
+                '{url_id}',
+                {resp.status_code},
+                '{h1}',
+                '{title}',
+                '{description}'
+            );
+            """
         )
         conn.commit()
         conn.close()
         flash('Страница успешно проверена', 'success')
-        return redirect(url_for('show_url', url_id=url_id), code=302)
-    except requests.exceptions.HTTPError:
+        return redirect(url_for('show_url', url_id=url_id), 302)
+    except requests.exceptions.RequestException:
         flash('Произошла ошибка при проверке', 'danger')
-        return redirect(url_for('show_url', url_id=url_id), code=422)
+        return redirect(url_for('show_url', url_id=url_id))
