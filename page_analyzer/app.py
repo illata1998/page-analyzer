@@ -38,7 +38,7 @@ def index():
 def add_url():
     url = request.form.get('url', '', type=str)
     if not validate_url(url):
-        flash('Некорекктный URL', 'danger')
+        flash('Некорректный URL', 'danger')
         messages = get_flashed_messages(with_categories=True)
         return render_template(
             'index.html',
