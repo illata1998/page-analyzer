@@ -1,7 +1,6 @@
 import os
-import psycopg2
 import requests
-
+from dotenv import load_dotenv
 from flask import (
     Flask,
     render_template,
@@ -11,22 +10,22 @@ from flask import (
     url_for,
     redirect
 )
-
-from dotenv import load_dotenv
-
-from page_analyzer.utils import validate_url, normalize_url, format_timestamp
+from page_analyzer.url_functions import validate_url, normalize_url
 from page_analyzer.html_parser import parse_html
+from page_analyzer.database_functions import (
+    add_new_url,
+    add_new_url_check,
+    get_url_info_by_url_id,
+    get_url_id_by_url_name,
+    get_url_checks_by_url_id,
+    get_all_urls
+)
+
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-
-DATABASE_URL = os.getenv('DATABASE_URL')
-
-
-def connect_to_db():
-    return psycopg2.connect(DATABASE_URL)
 
 
 @app.get('/')
@@ -36,79 +35,29 @@ def index():
 
 @app.post('/urls')
 def add_url():
-    url = request.form.get('url', '', type=str)
-    if not validate_url(url):
+    url_name = request.form.get('url', '', type=str)
+    if not validate_url(url_name):
         flash('Некорректный URL', 'danger')
         messages = get_flashed_messages(with_categories=True)
         return render_template(
             'index.html',
             messages=messages,
-            url=url
+            url_name=url_name
         ), 422
-    url = normalize_url(url)
-    conn = connect_to_db()
-    cursor = conn.cursor()
-    cursor.execute(
-        f"""
-        SELECT *
-        FROM urls
-        WHERE urls.name = '{url}';
-        """
-    )
-    record = cursor.fetchone()
-    if not record:
+    url_name = normalize_url(url_name)
+    url_id = get_url_id_by_url_name(url_name)
+    if not url_id:
         flash('Страница успешно добавлена', 'success')
-        cursor.execute(
-            f"""
-            INSERT INTO urls (name) VALUES
-            ('{url}');
-            """
-        )
-        conn.commit()
-        cursor.execute(
-            f"""
-            SELECT id
-            FROM urls
-            WHERE urls.name = '{url}';
-            """
-        )
-        url_id = cursor.fetchone()[0]
-        conn.close()
+        add_new_url(url_name)
+        url_id = get_url_id_by_url_name(url_name)
     else:
         flash('Страница уже существует', 'info')
-        url_id = record[0]
     return redirect(url_for('show_url', url_id=url_id), 302)
 
 
 @app.get('/urls')
 def show_all_urls():
-    conn = connect_to_db()
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT
-            urls.id,
-            urls.name,
-            latest_url_checks.status_code,
-            latest_url_checks.created_at
-        FROM urls
-        LEFT JOIN latest_url_checks
-            ON urls.id = latest_url_checks.url_id
-        ORDER BY urls.id DESC;
-        """
-    )
-    records = cursor.fetchall()
-    urls = []
-    if records is not None:
-        for record in records:
-            urls.append(
-                {
-                    'id': record[0],
-                    'name': record[1],
-                    'status_code': record[2],
-                    'latest_checked_at': format_timestamp(record[3])
-                }
-            )
+    urls = get_all_urls()
     return render_template(
         'show_all_urls.html',
         urls=urls
@@ -117,98 +66,33 @@ def show_all_urls():
 
 @app.route('/urls/<int:url_id>')
 def show_url(url_id):
-    conn = connect_to_db()
-    cursor = conn.cursor()
-    cursor.execute(
-        f"""
-        SELECT *
-        FROM urls
-        WHERE urls.id = {url_id};
-        """
-    )
-    record = cursor.fetchone()
-    if not record:
+    url_info = get_url_info_by_url_id(url_id)
+    if not url_info:
         return render_template('404.html'), 404
-    url = {
-        'id': record[0],
-        'name': record[1],
-        'created_at': format_timestamp(record[2])
-    }
-    cursor.execute(
-        f"""
-        SELECT
-            url_checks.id,
-            url_checks.status_code,
-            url_checks.h1,
-            url_checks.title,
-            url_checks.description,
-            url_checks.created_at
-        FROM url_checks
-        WHERE url_checks.url_id = {url_id}
-        ORDER BY url_checks.id DESC;
-        """
-    )
-    records = cursor.fetchall()
-    url_checks = []
-    if records is not None:
-        for record in records:
-            url_checks.append(
-                {
-                    'id': record[0],
-                    'status_code': record[1],
-                    'h1': record[2],
-                    'title': record[3],
-                    'description': record[4],
-                    'created_at': format_timestamp(record[5])
-                }
-            )
-    conn.close()
+    url_checks = get_url_checks_by_url_id(url_id)
     messages = get_flashed_messages(with_categories=True)
     return render_template(
         'show_url.html',
         messages=messages,
-        url=url,
+        url=url_info,
         url_checks=url_checks
     )
 
 
 @app.post('/urls/<int:url_id>/checks')
 def check_url(url_id):
-    conn = connect_to_db()
-    cursor = conn.cursor()
-    cursor.execute(
-        f"""
-        SELECT name
-        FROM urls
-        WHERE urls.id = {url_id};
-        """
-    )
-    record = cursor.fetchone()
-    if not record:
+    url_info = get_url_info_by_url_id(url_id)
+    if not url_info:
         return render_template('404.html'), 404
     try:
-        resp = requests.get(record[0])
+        resp = requests.get(url_info['name'])
         resp.raise_for_status()
-        h1, title, description = parse_html(resp)
-        cursor.execute(
-            f"""
-            INSERT INTO url_checks (
-                url_id,
-                status_code,
-                h1,
-                title,
-                description
-            ) VALUES (
-                '{url_id}',
-                {resp.status_code},
-                '{h1}',
-                '{title}',
-                '{description}'
-            );
-            """
-        )
-        conn.commit()
-        conn.close()
+        values = {
+            'url_id': url_id,
+            'status_code': resp.status_code,
+        }
+        values.update(parse_html(resp))
+        add_new_url_check(**values)
         flash('Страница успешно проверена', 'success')
         return redirect(url_for('show_url', url_id=url_id), 302)
     except requests.exceptions.RequestException:
