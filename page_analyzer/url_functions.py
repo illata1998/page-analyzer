@@ -11,9 +11,3 @@ def validate_url(url):
 def normalize_url(url):
     parsed_url = urlparse(url)
     return urlunparse((parsed_url.scheme, parsed_url.hostname, '', '', '', ''))
-
-
-def format_timestamp(created_at):
-    if created_at is None:
-        return None
-    return created_at.date()
