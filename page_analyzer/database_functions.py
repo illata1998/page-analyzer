@@ -37,11 +37,11 @@ def add_new_url_check(url_id, status_code, h1, title, description):
                 title,
                 description
             ) VALUES (
-                '{url_id}',
+                "{url_id}",
                 {status_code},
-                '{h1}',
-                '{title}',
-                '{description}'
+                "{h1}",
+                "{title}",
+                "{description}"
             );
             """
         )
