@@ -17,10 +17,10 @@ def add_new_url(url_name):
     with psycopg2.connect(DATABASE_URL) as conn:
         cursor = conn.cursor()
         cursor.execute(
-            f'''
+            f"""
             INSERT INTO urls (name) VALUES
-            ("{url_name}");
-            '''
+            ('{url_name}');
+            """
         )
         conn.commit()
 
@@ -29,7 +29,7 @@ def add_new_url_check(url_id, status_code, h1, title, description):
     with psycopg2.connect(DATABASE_URL) as conn:
         cursor = conn.cursor()
         cursor.execute(
-            f'''
+            f"""
             INSERT INTO url_checks (
                 url_id,
                 status_code,
@@ -39,11 +39,11 @@ def add_new_url_check(url_id, status_code, h1, title, description):
             ) VALUES (
                 {url_id},
                 {status_code},
-                "{h1}",
-                "{title}",
-                "{description}"
+                $${h1}$$,
+                $${title}$$,
+                $${description}$$
             );
-            '''
+            """
         )
         conn.commit()
 
@@ -52,11 +52,11 @@ def get_url_id_by_url_name(url_name):
     with psycopg2.connect(DATABASE_URL) as conn:
         cursor = conn.cursor()
         cursor.execute(
-            f'''
+            f"""
             SELECT urls.id
             FROM urls
-            WHERE urls.name = "{url_name}";
-            '''
+            WHERE urls.name = '{url_name}';
+            """
         )
         record = cursor.fetchone()
     url_id = record[0] if record else None
@@ -68,11 +68,11 @@ def get_url_info_by_url_id(url_id):
     with psycopg2.connect(DATABASE_URL) as conn:
         cursor = conn.cursor()
         cursor.execute(
-            f'''
+            f"""
             SELECT *
             FROM urls
             WHERE urls.id = {url_id};
-            '''
+            """
         )
         record = cursor.fetchone()
     if record:
@@ -87,18 +87,18 @@ def get_url_checks_by_url_id(url_id):
     with psycopg2.connect(DATABASE_URL) as conn:
         cursor = conn.cursor()
         cursor.execute(
-            f'''
-            SELECT
-                url_checks.id,
-                url_checks.status_code,
-                url_checks.h1,
-                url_checks.title,
-                url_checks.description,
-                url_checks.created_at
-            FROM url_checks
-            WHERE url_checks.url_id = {url_id}
-            ORDER BY url_checks.id DESC;
-            '''
+            f"""
+                SELECT
+                    url_checks.id,
+                    url_checks.status_code,
+                    url_checks.h1,
+                    url_checks.title,
+                    url_checks.description,
+                    url_checks.created_at
+                FROM url_checks
+                WHERE url_checks.url_id = {url_id}
+                ORDER BY url_checks.id DESC;
+                """
         )
         records = cursor.fetchall()
     if records:
@@ -120,7 +120,7 @@ def get_all_urls():
     with psycopg2.connect(DATABASE_URL) as conn:
         cursor = conn.cursor()
         cursor.execute(
-            '''
+            """
             SELECT
                 urls.id,
                 urls.name,
@@ -130,7 +130,7 @@ def get_all_urls():
             LEFT JOIN latest_url_checks
                 ON urls.id = latest_url_checks.url_id
             ORDER BY urls.id DESC;
-            '''
+            """
         )
         records = cursor.fetchall()
     if records:
