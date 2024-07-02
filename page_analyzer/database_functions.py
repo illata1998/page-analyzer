@@ -19,7 +19,7 @@ def add_new_url(url_name):
         cursor.execute(
             f"""
             INSERT INTO urls (name) VALUES
-            ('{url_name}');
+            ("{url_name}");
             """
         )
         conn.commit()
@@ -37,7 +37,7 @@ def add_new_url_check(url_id, status_code, h1, title, description):
                 title,
                 description
             ) VALUES (
-                "{url_id}",
+                {url_id},
                 {status_code},
                 "{h1}",
                 "{title}",
@@ -55,7 +55,7 @@ def get_url_id_by_url_name(url_name):
             f"""
             SELECT urls.id
             FROM urls
-            WHERE urls.name = '{url_name}';
+            WHERE urls.name = "{url_name}";
             """
         )
         record = cursor.fetchone()
