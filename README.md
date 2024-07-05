@@ -5,3 +5,9 @@
 ## Description
 Page Analyzer is a simple web application that checks the basic page-level elements of websites valuable for on-page SEO.
 Check out Page Analyzer by clicking [here](https://python-project-83-2k3w.onrender.com/).
+
+## Installation
+Clone this repository to your local machine.
+```bash
+git clone git@github.com:illata1998/python-project-83.git
+```
