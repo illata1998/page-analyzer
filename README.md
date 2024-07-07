@@ -10,4 +10,32 @@ Check out Page Analyzer by clicking [here](https://python-project-83-2k3w.onrend
 Clone this repository to your local machine.
 ```bash
 git clone git@github.com:illata1998/python-project-83.git
+cd python-project-83
 ```
+Install dependencies using [Poetry](https://python-poetry.org/docs/).
+```bash
+make install
+```
+Create the new .env file and define SECRET_KEY and DATABASE_URL variables there. For example,
+```bash
+SECRET_KEY=secret_key
+DATABASE_URL=postgresql://user:password@host:port/database_name
+```
+Initialize the database manualy or using provided bash script.
+```bash
+make build
+```
+Run the app.
+```bash
+# using Gunicorn
+make start
+# then open http://0.0.0.0:8000 in your browser
+
+
+# or using the Flask development server with debug mode
+make dev
+# then open http://localhost:8000 in your browser
+```
+
+## Demo
+
