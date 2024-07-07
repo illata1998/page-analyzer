@@ -98,3 +98,7 @@ def check_url(url_id):
     except requests.exceptions.RequestException:
         flash('Произошла ошибка при проверке', 'danger')
         return redirect(url_for('show_url', url_id=url_id))
+
+
+if __name__ == '__main__':
+    app.run()
