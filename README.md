@@ -18,8 +18,8 @@ make install
 ```
 Create the new .env file and define SECRET_KEY and DATABASE_URL variables there. For example,
 ```bash
-SECRET_KEY=secret_key
-DATABASE_URL=postgresql://user:password@host:port/database_name
+echo "SECRET_KEY=secret_key" >> .env
+echo "DATABASE_URL=postgresql://user:password@host:port/database_name" >> .env
 ```
 Initialize the database manualy or using provided bash script.
 ```bash
