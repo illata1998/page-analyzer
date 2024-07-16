@@ -10,9 +10,9 @@ from flask import (
     url_for,
     redirect
 )
-from page_analyzer.url_functions import validate_url, normalize_url
-from page_analyzer.html_parser import parse_html
-from page_analyzer.database_functions import (
+from page_analyzer.url import validate_url, normalize_url
+from page_analyzer.html import parse_seo_tags_from_html
+from page_analyzer.database import (
     add_new_url,
     add_new_url_check,
     get_url_info_by_url_id,
@@ -91,8 +91,8 @@ def check_url(url_id):
             'url_id': url_id,
             'status_code': resp.status_code,
         }
-        values.update(parse_html(resp))
-        add_new_url_check(**values)
+        values.update(parse_seo_tags_from_html(resp.text))
+        add_new_url_check(values)
         flash('Страница успешно проверена', 'success')
         return redirect(url_for('show_url', url_id=url_id), 302)
     except requests.exceptions.RequestException:
