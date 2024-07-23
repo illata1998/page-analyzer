@@ -9,7 +9,7 @@ Page Analyzer is a simple web application that checks the basic page-level eleme
 Clone this repository to your local machine.
 ```bash
 git clone git@github.com:illata1998/python-project-83.git
-cd python-project-83
+cd page-analyzer
 ```
 Install dependencies using [Poetry](https://python-poetry.org/docs/).
 ```bash
